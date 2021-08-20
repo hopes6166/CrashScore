@@ -1,0 +1,189 @@
+---
+title: "Crash Score"
+author: "Minh Ho"
+date: "8/8/2021"
+output: html_document
+---
+```{r}
+df <- read.csv("/Users/apple/R studying/Crash Score project/2019-06-13-exam-pa-data-file.csv")
+# Load library
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+summary(df)
+```
+```{r}
+summary(as.factor(df$Time_of_Day))
+df1 <- df
+df1$Time_of_day <- as.factor(df1$Time_of_Day)
+ggplot(data = df1, aes(x = Time_of_day)) + geom_bar()
+```
+
+Check to see if any missing value
+
+```{r}
+for (i in names(df)) {
+  print(i)
+  print(sum(is.na(df[, i])))
+}
+
+#Other way to do that
+apply(is.na(df), 2, sum)
+```
+We can see that there is no missing value for any variables. That would be great. I would then draw some charts to see dig deeper into the variables
+
+```{r}
+
+factor_list <- c()
+others <- c()
+for (i in names(df)) {
+  if (class(df[ , i]) == "factor") {
+    factor_list <- append(factor_list, i)
+  }
+  else {
+    others <- append(others, i)
+  }
+}
+
+for (i in factor_list) {
+  p <- ggplot(data = df, aes(x = df[, i])) + 
+    geom_bar() + 
+    xlab(i) + 
+    theme(axis.text.x = element_text(angle = 12),
+          panel.background = element_blank(),
+          panel.grid = element_line(colour = "grey"))
+  print(p)
+}
+
+for (i in others) {
+  p <- ggplot(data = df1, aes(x = df1[, i])) + geom_histogram() + xlab(i)
+  print(p)
+}
+```
+the most frequent road feature is NONE
+the most frequent Road Character is Straight level, next is Straight Grade. Others characters are very rare.
+Rd_Class is half high way, half other.
+Rd_Configuration is mostly two way no median.
+Rd_surface are mostly smooth asphalt 
+Rd_conditions are mostly dry, sometimes is wet and very rare it is ice-snow-slush and other
+Light is mostly daylight. sometimes is dark-lit, very rare it is dark-not-lit, dawn, dusk and other.
+Most of the time it is clear, sometimes cloudy, rain, snow and other is very rare.
+Traffic control most of the time it is Non, signal is also frequent, sometimes it is stop-sign, yield and other is very rare.
+Most of the time the accident happens in non-work-area.
+Crash_Score is skew left.
+Year seems to be increasing every year, except 2019, seems to be the time of record is at that middle of 2019.
+
+#RELATIONSHIP BETWEEN TARGET AND PREDICTORS
+
+I believe that the year, month should be factor. Therefore I convert them into factor before doing this analysis.
+
+```{r}
+df1 <-df
+df1$year <-as.factor(df1$year)
+df1$Month <- as.factor(df1$Month)
+factor_list <- c()
+others <- c()
+for (i in names(df1)) {
+  if (class(df[ , i]) == "factor") {
+    factor_list <- append(factor_list, i)
+  }
+  else {
+    others <- append(others, i)
+  }
+}
+
+for (i in factor_list) {
+  p <- ggplot(data = df1, aes(x = df1[, i], y = Crash_Score)) + 
+    geom_boxplot() + 
+    xlab(i) + 
+    ylim(0, 15) +
+    theme(axis.text.x = element_text(angle = 12)
+          )
+  print(p)
+}
+
+for (i in others) {
+  p <- ggplot(data = df1, aes(x = df[, i], y = Crash_Score)) + geom_point() + xlab(i)
+  print(p)
+}
+```
+Actually I think there is a lot of outliers in the boxplot Crash_Score and other features. I also see that the Time_of_day should be factor as well. I modify a bit on my code. First I would like to make Crash_Score related feature being normal first by log transforming it
+
+```{r}
+ggplot(data = df, aes(x = log(Crash_Score))) + geom_histogram()
+```
+it looks so much normal than before. Then I copy the code before, making time of day being factor and then see the result.
+
+```{r}
+df2 <- df
+df2$year <-as.factor(df2$year)
+df2$Month <- as.factor(df2$Month)
+df2$Time_of_Day <- as.factor(df2$Time_of_Day)
+df2$ln_Crash_Score <- log(df2$Crash_Score)
+df2$Crash_Score <- NULL
+
+factor_list <- c()
+others <- c()
+for (i in names(df2)) {
+  if (class(df2[ , i]) == "factor") {
+    factor_list <- append(factor_list, i)
+  }
+  else {
+    others <- append(others, i)
+  }
+}
+
+for (i in factor_list) {
+  p <- ggplot(data = df2, aes(x = df2[, i], y = ln_Crash_Score)) + 
+    geom_boxplot() + 
+    xlab(i) + 
+    ylim(0, 4) +
+    theme(axis.text.x = element_text(angle = 12)
+          )
+  print(p)
+}
+
+
+```
+We can see that when we log transformed the Crash Score value, it is better to see the boxplots. 
+For year, month I don't see any differences in the predictor value and the ln_Crash_Score.
+For Rd_feature, Intersection seems to make the Rd_feature being a bit higher in the ln_Crash_score
+For Rd_Character, Other has lower ln_Crash_Score. Straight seems to have higher ln_Crash_score than Curve.
+HWY have higher Crash_Score than Other. 
+
+#REDUCE THE NUMBER OF LEVELS 
+I have to look at each factor variable and see if I can group the factor levels together if the outcome in the target is the same
+
+```{r}
+for (i in names(df)) {
+  table <- df%>%group_by_(i) %>% summarise(mean = mean(Crash_Score),
+                                           median = median(Crash_Score),
+                                           n = n())
+  print(table)
+}
+
+```
+
+Comments:
+Years, Months seem not related to the Crash_Score we want to explore.
+Rd_Feature make some difference between levels. I decide to keep it untouched
+Rd_Class has significant difference enough 
+Rd_Configuration has the Unknown level very small amount of observation, and its mean and median is close to One-Way, so I think I would merge the two levels into One-Way
+Rd_Surface doesn't have any mergeable levels as each level differs.
+Rd_Condition, Light and Weather will not be touched as asked.
+Traffic_Control has a clear different between levels: None < Yield < Other < Stop-sign < Signal. I would not change any level here as it is very clear.
+Work_Area is clear enough not to touch.
+
+```{r}
+# Merge level One-Way and Unknown to 1 level
+df[df$Rd_Configuration == "UNKNOWN", ]$Rd_Configuration <- "ONE-WAY"
+
+# The way of solution
+var <- "Traffic_Control"
+dat2[,var] <- as.factor(dat2[,var])
+var.levels <- levels(dat2[,var])
+dat2[,var] <- mapvalues(dat2[,var],var.levels,c("OTHER","OTHER","CONTROLLED","CONTROLLED","CONTROLLED"))
+```
+
