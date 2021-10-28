@@ -9,6 +9,7 @@ df <- read.csv("/Users/apple/R studying/Crash Score project/2019-06-13-exam-pa-d
 # Load library
 library(ggplot2)
 library(dplyr)
+library(plyr)
 ```
 
 ```{r}
@@ -178,12 +179,17 @@ Work_Area is clear enough not to touch.
 
 ```{r}
 # Merge level One-Way and Unknown to 1 level
-df[df$Rd_Configuration == "UNKNOWN", ]$Rd_Configuration <- "ONE-WAY"
 
-# The way of solution
-var <- "Traffic_Control"
-dat2[,var] <- as.factor(dat2[,var])
-var.levels <- levels(dat2[,var])
-dat2[,var] <- mapvalues(dat2[,var],var.levels,c("OTHER","OTHER","CONTROLLED","CONTROLLED","CONTROLLED"))
+var <- "Rd_Configuration"
+df[,var] <- as.factor(df[,var])
+var.levels <- levels(df[,var])
+df[,var] <- mapvalues(df[,var],var.levels,c("ONE-WAY", "TWO-WAY-NO-MEDIAN", "TWO-WAY-PROTECTED-MEDIAN", "TWO-WAY-UNPROTECTED-MEDIAN", "ONE-WAY"))
+
+# We can change the "Rd_Configuration" to var to get the same result
+table <- as.data.frame(table(df[,"Rd_Configuration"]))
+  max <- which.max(table[,2])
+  level.name <- as.character(table[max,1])
+  df[,"Rd_Configuration"] <- relevel(df[,"Rd_Configuration"], ref = level.name)
+table(df[,"Rd_Configuration"])
 ```
 
