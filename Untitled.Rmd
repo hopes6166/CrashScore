@@ -10,6 +10,7 @@ df <- read.csv("/Users/apple/R studying/Crash Score project/2019-06-13-exam-pa-d
 library(ggplot2)
 library(dplyr)
 library(plyr)
+library(caret)
 ```
 
 ```{r}
@@ -192,4 +193,35 @@ table <- as.data.frame(table(df[,"Rd_Configuration"]))
   df[,"Rd_Configuration"] <- relevel(df[,"Rd_Configuration"], ref = level.name)
 table(df[,"Rd_Configuration"])
 ```
+# Running Principal Component Analysis
+
+```{r}
+dfPCA <- df[ , -which(names(df) == "Crash_Score")]
+mainEffects <- dummyVars(~., data = dfPCA)
+dfPCA_bin <- predict(mainEffects, newdata = dfPCA)
+PCA <- prcomp(dfPCA_bin, center = TRUE, scale = TRUE)
+summary(PCA)
+```
+
+We have 50 PC in total but just first 25 PCs has explained more than 80% of the data. If I need to just take a few PCs to get the reduction of dimension I would do this way. However, this method make the model harder to explain, that's the drawback.
+
+If I have to reduce the number of dimension using PC, I would seriously consider this option. However my main goal here is to predict the Crash_Score, so I would consider using PCA to generate a new feature from previous variables.
+
+Now I will use the advice from the Solution (only use 3 variables and then extract the Principal Component(s)) (only Rd_conditions, Light and Weather)
+```{r}
+dfPCA1 <- df[ , c("Rd_Conditions", "Light", "Weather")]
+# use dummyVars function
+mainEffects <- dummyVars(~., data = dfPCA1)
+dfPCA1_bin <- predict(mainEffects, newdata = dfPCA1)
+PCA1 <- prcomp(dfPCA1_bin, center = TRUE, scale = TRUE)
+summary(PCA1)
+```
+
+```{r}
+PCA1$rotation
+```
+
+We can see that the first PC the strongest weight will be:
+Rd_conditions.DRY 
+
 
